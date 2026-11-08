@@ -25,10 +25,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.11.1'
 
       - name: Prepare Android project
         run: |
+          test -s index.html
+
           mkdir -p app/src/main/java/com/moe/raspisanie
           mkdir -p app/src/main/assets
 
@@ -57,7 +59,7 @@ jobs:
 
           cat > build.gradle <<'EOF'
           plugins {
-              id 'com.android.application' version '8.7.3' apply false
+              id 'com.android.application' version '8.9.2' apply false
           }
           EOF
 
@@ -141,8 +143,18 @@ jobs:
       - name: Build APK
         run: gradle assembleDebug
 
+      - name: Verify APK
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          unzip -t "$APK"
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          "$APKSIGNER" verify --verbose "$APK"
+          sha256sum "$APK"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: moe-raspisanie-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
